@@ -1,0 +1,104 @@
+#! /bin/python
+
+import offtrac
+import argparse
+import ConfigParser
+import os
+
+TRAC_URL = "https://{0!s}:{1!s}@{2!s}/{3!s}/login/xmlrpc"
+BASEURL = "fedorahosted.org"
+PROJECT = "abrt"
+
+def read_config():
+    config_parser = ConfigParser.ConfigParser()
+    res = config_parser.read(['/etc/atrac/atrac.conf', os.path.expanduser('~/.atrac/atrac.conf')])
+
+    if res:
+        return config_parser
+
+    return {"username":"", "password":""}
+
+def connect_to_server(username, password):
+    uri = TRAC_URL.format(username, password, BASEURL, PROJECT)
+    return offtrac.TracServer(uri)
+
+def create_ticket(options):
+    s = connect_to_server(options.username, options.password)
+    res = s.create_ticket(notify=True, summary=options.summary, version="2.0", description=options.description, milestone=options.milestone)
+
+    if res:
+        return "{0!s}".format(str(res))
+
+def create_milestone(options):
+    s = connect_to_server(options.username, options.password)
+    res = 1
+    try:
+        res = s.create_milestone(name=options.name, description=options.description)
+    except Exception as ex:
+        if ex.faultCode == 1:
+            print "Milestone '{0!s}' already exists!".format(options.name)
+
+    if res == 0:
+        return "http://{0!s}/{1!s}/milestone/{2!s}".format(BASEURL, PROJECT, options.name)
+
+    return ""
+
+def show_ticket(options):
+    print "show ticket"
+
+def show_milestone(options):
+    print "show milestone"
+
+if __name__ == "__main__":
+    config = read_config()
+    commands = argparse.ArgumentParser(description='ABRT trac cmdline')
+
+    username=config.get("atrac", "username")
+    password=config.get("atrac", "password")
+
+    commands.add_argument("--username", type=str, default=username)
+    commands.add_argument("--password", type=str, default=password)
+
+    actions = commands.add_subparsers(help="supported commands")
+
+    action_create = actions.add_parser("create", help="create a trac entry")
+    action_show = actions.add_parser("show", help="show a trac entry")
+
+    # create command and it's options
+    create_options = action_create.add_subparsers()
+    ticket_options = create_options.add_parser("ticket", help="create ticket")
+    milestone_options = create_options.add_parser("milestone", help="create milestone")
+    ticket_options.add_argument("--summary", help="ticket summary", type=str, required=True)
+    ticket_options.add_argument("--description", help="ticket details", type=str, default="")
+    ticket_options.add_argument("--milestone", help="milestone to assign the created ticket to", type=str, default="")
+    ticket_options.set_defaults(func=create_ticket)
+
+    milestone_options.add_argument("--name", help="milestone name", type=str, required=True)
+    milestone_options.add_argument("--description", help="milestone details", type=str, default="")
+    milestone_options.set_defaults(func=create_milestone)
+
+    # show command and it's options
+    show_options = action_show.add_subparsers()
+    ticket_options = show_options.add_parser("ticket", help="show ticket")
+    milestone_options = show_options.add_parser("milestone", help="show milestone")
+    ticket_options.add_argument("--summary", help="ticket summary", type=str, required=True)
+    ticket_options.add_argument("--description", help="ticket details", type=str)
+    ticket_options.set_defaults(func=show_ticket)
+
+    milestone_options.add_argument("--name", help="ticket summary", type=str, required=True)
+    milestone_options.add_argument("--description", help="ticket details", type=str)
+    milestone_options.set_defaults(func=show_milestone)
+
+
+    args = commands.parse_args()
+    # this magic calls whatever is set by set_defaults()
+    result = args.func(args)
+    if result:
+        print result
+
+
+
+
+
+
+
