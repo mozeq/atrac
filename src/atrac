@@ -1,5 +1,6 @@
 #! /bin/python
 
+import xmlrpclib
 import offtrac
 import argparse
 import ConfigParser
@@ -91,14 +92,14 @@ if __name__ == "__main__":
 
 
     args = commands.parse_args()
-    # this magic calls whatever is set by set_defaults()
-    result = args.func(args)
+
+    result = None
+    try:
+        # this magic calls whatever is set by set_defaults()
+        result = args.func(args)
+    except xmlrpclib.Error as e:
+        print e
+
     if result:
         print result
-
-
-
-
-
-
 
