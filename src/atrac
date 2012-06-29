@@ -25,7 +25,8 @@ def connect_to_server(username, password):
 
 def create_ticket(options):
     s = connect_to_server(options.username, options.password)
-    res = s.create_ticket(notify=True, summary=options.summary, version="2.0", description=options.description, milestone=options.milestone)
+    name = options.username if options.me else None;
+    res = s.create_ticket(notify=True, summary=options.summary, version="2.0", description=options.description, milestone=options.milestone, assignee=name)
 
     if res:
         return "{0!s}".format(str(res))
@@ -72,6 +73,7 @@ if __name__ == "__main__":
     ticket_options.add_argument("--summary", help="ticket summary", type=str, required=True)
     ticket_options.add_argument("--description", help="ticket details", type=str, default="")
     ticket_options.add_argument("--milestone", help="milestone to assign the created ticket to", type=str, default="")
+    ticket_options.add_argument("--me", help="assign me to a new ticket", action='store_true')
     ticket_options.set_defaults(func=create_ticket)
 
     milestone_options.add_argument("--name", help="milestone name", type=str, required=True)
